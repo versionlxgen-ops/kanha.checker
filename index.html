@@ -33,6 +33,7 @@
     
     <div class="tabs">
         <button id="tab-steam" class="tab active" onclick="setService('steam')">STEAM</button>
+        <button id="tab-crunchyroll" class="tab" onclick="setService('crunchyroll')">CRUNCHYROLL</button>
     </div>
 
     <p>Subí tu archivo .txt o pegá las cuentas acá:</p>
@@ -41,7 +42,7 @@
     <input type="file" id="fileInput" accept=".txt">
     
     <br>
-    <textarea id="combosInput" placeholder="kudon93:DIEP1996&#10;usuario2:pass123"></textarea><br>
+    <textarea id="combosInput" placeholder="usuario:contraseña"></textarea><br>
     
     <button class="check" onclick="startCheck()">INICIAR CHEQUEO</button>
     
@@ -68,7 +69,6 @@
         document.getElementById('fileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            
             const reader = new FileReader();
             reader.onload = function(event) {
                 document.getElementById('combosInput').value = event.target.result;
@@ -78,24 +78,22 @@
 
         function setService(service) {
             currentService = service;
+            document.getElementById('tab-steam').className = service === 'steam' ? 'tab active' : 'tab';
+            document.getElementById('tab-crunchyroll').className = service === 'crunchyroll' ? 'tab active' : 'tab';
         }
 
         async function startCheck() {
             const text = document.getElementById('combosInput').value.trim();
             if (!text) return alert("Poné algo, AGENT man.");
             
-            // LIMPIEZA DE ESPACIOS EN BLANCO
             const rawLines = text.split('\n');
             const lines = [];
             for (let line of rawLines) {
                 if (!line.includes(':')) continue;
-                // Separa por los dos puntos y limpia los espacios de ambos lados
                 const parts = line.split(':');
                 const user = parts[0].trim();
-                const pass = parts.slice(1).join(':').trim(); // El slice por si la clave tiene ":"
-                if (user && pass) {
-                    lines.push(`${user}:${pass}`);
-                }
+                const pass = parts.slice(1).join(':').trim();
+                if (user && pass) lines.push(`${user}:${pass}`);
             }
 
             const total = lines.length;
@@ -149,7 +147,7 @@
             const blob = new Blob([hitsArray.join('\n')], { type: 'text/plain' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = 'hits_steam.txt';
+            a.download = `hits_${currentService}.txt`;
             a.click();
         }
     </script>
