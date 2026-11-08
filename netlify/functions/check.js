@@ -50,7 +50,8 @@ exports.handler = async (event) => {
                     results.push({ email, valid: false, reason: 'Credenciales inválidas' });
                 }
             } catch (err) {
-                results.push({ email, valid: false, reason: 'Error de red o bloqueo' });
+                // ACÁ ESTÁ EL CAMBIO PA' VER EL ERROR REAL
+                results.push({ email, valid: false, reason: 'Error: ' + (err.response ? err.response.status : err.message) });
             }
         }
 
