@@ -24,7 +24,7 @@
             if (!combos) return resultDiv.innerHTML = "<span class='bad'>Poné algo.</span>";
             resultDiv.innerHTML = "Chequeando...";
             try {
-                const res = await fetch("https://unrivaled-dodol-d78095.netlify.app/.netlify/functions/check", {
+                const res = await fetch("https://fascinating-panda-466eb7.netlify.app/.netlify/functions/check", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ combos: combos.split('\n') })
