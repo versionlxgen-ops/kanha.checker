@@ -1,7 +1,19 @@
 const axios = require('axios');
 
 exports.handler = async (event) => {
-    if (event.httpMethod !== 'POST') return { statusCode: 405 };
+    const headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    };
+
+    if (event.httpMethod === 'OPTIONS') {
+        return { statusCode: 200, headers, body: '' };
+    }
+
+    if (event.httpMethod !== 'POST') {
+        return { statusCode: 405, headers, body: 'Method Not Allowed' };
+    }
 
     try {
         const { combos } = JSON.parse(event.body);
@@ -44,10 +56,10 @@ exports.handler = async (event) => {
 
         return {
             statusCode: 200,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            headers,
             body: JSON.stringify({ results })
         };
     } catch (e) {
-        return { statusCode: 500, body: JSON.stringify({ error: e.message }) };
+        return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
     }
 };
