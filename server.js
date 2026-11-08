@@ -53,9 +53,20 @@ app.post('/api/check', async (req, res) => {
 
                 const authResponse = loginRes.data.response;
                 
-                if (!authResponse || (authResponse.eresult !== 1 && authResponse.eresult !== 63)) {
-                    reason = `Credenciales inválidas (EResult: ${authResponse?.eresult || 'Desconocido'})`;
-                } else {
+                if (!loginRes.data || !loginRes.data.response) {
+    reason = `Error JSON: ${JSON.stringify(loginRes.data)}`;
+} else if (authResponse.eresult !== 1 && authResponse.eresult !== 63) {
+    reason = `Rechazado por Steam: ${JSON.stringify(authResponse)}`;
+} else {
+    const guardType = authResponse.allowed_confirmations?.[0]?.confirmation_type || 0;
+    if (guardType === 2 || guardType === 3 || guardType === 4) {
+        isValid = true;
+        reason = 'Válida (Requiere 2FA/Steam Guard)';
+    } else {
+        isValid = true;
+        reason = 'Válida (Sin 2FA)';
+    }
+} else {
                     const guardType = authResponse.allowed_confirmations?.[0]?.confirmation_type || 0;
                     if (guardType === 2 || guardType === 3 || guardType === 4) {
                         isValid = true;
